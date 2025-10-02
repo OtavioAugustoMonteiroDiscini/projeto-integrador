@@ -1,0 +1,198 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo para Empresas
+model Empresa {
+  id        String   @id @default(cuid())
+  nome      String
+  cnpj      String   @unique
+  email     String   @unique
+  telefone  String?
+  endereco  String?
+  cidade    String?
+  estado    String?
+  cep       String?
+  senha     String
+  tipo      String   @default("EMPRESA") // EMPRESA, ADMIN
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  produtos     Produto[]
+  vendas       Venda[]
+  compras      Compra[]
+  contasPagar  ContaPagar[]
+  contasReceber ContaReceber[]
+  alertas      Alerta[]
+
+  @@map("empresas")
+}
+
+// Modelo para Produtos
+model Produto {
+  id          String   @id @default(cuid())
+  nome        String
+  descricao   String?
+  codigo      String   @unique
+  precoVenda  Decimal  @db.Decimal(10, 2)
+  precoCusto  Decimal  @db.Decimal(10, 2)
+  estoque     Int      @default(0)
+  estoqueMin  Int      @default(5)
+  categoria   String?
+  marca       String?
+  unidade     String   @default("UN")
+  ativo       Boolean  @default(true)
+  empresaId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itensVenda  ItemVenda[]
+  itensCompra ItemCompra[]
+
+  @@map("produtos")
+}
+
+// Modelo para Vendas
+model Venda {
+  id          String   @id @default(cuid())
+  numero      String
+  cliente     String
+  dataVenda   DateTime @default(now())
+  valorTotal  Decimal  @db.Decimal(10, 2)
+  desconto    Decimal  @default(0) @db.Decimal(10, 2)
+  status      String   @default("PENDENTE") // PENDENTE, CONCLUIDA, CANCELADA
+  formaPagamento String @default("DINHEIRO") // DINHEIRO, CARTAO, PIX, BOLETO
+  observacoes String?
+  empresaId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  empresa     Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itens       ItemVenda[]
+
+  @@map("vendas")
+}
+
+// Modelo para Itens de Venda
+model ItemVenda {
+  id        String  @id @default(cuid())
+  quantidade Int
+  precoUnitario Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+  vendaId   String
+  produtoId String
+
+  // Relacionamentos
+  venda     Venda   @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produto   Produto @relation(fields: [produtoId], references: [id])
+
+  @@map("itens_venda")
+}
+
+// Modelo para Compras
+model Compra {
+  id          String   @id @default(cuid())
+  numero      String
+  fornecedor  String
+  dataCompra  DateTime @default(now())
+  valorTotal  Decimal  @db.Decimal(10, 2)
+  status      String   @default("PENDENTE") // PENDENTE, CONCLUIDA, CANCELADA
+  observacoes String?
+  empresaId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  empresa     Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itens       ItemCompra[]
+
+  @@map("compras")
+}
+
+// Modelo para Itens de Compra
+model ItemCompra {
+  id        String  @id @default(cuid())
+  quantidade Int
+  precoUnitario Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+  compraId  String
+  produtoId String
+
+  // Relacionamentos
+  compra    Compra  @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  produto   Produto @relation(fields: [produtoId], references: [id])
+
+  @@map("itens_compra")
+}
+
+// Modelo para Contas a Pagar
+model ContaPagar {
+  id          String   @id @default(cuid())
+  descricao   String
+  valor       Decimal  @db.Decimal(10, 2)
+  dataVencimento DateTime
+  dataPagamento DateTime?
+  status      String   @default("PENDENTE") // PENDENTE, PAGO, VENCIDO
+  categoria   String?  // ALUGUEL, FORNECEDOR, SERVICO, OUTROS
+  observacoes String?
+  empresaId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@map("contas_pagar")
+}
+
+// Modelo para Contas a Receber
+model ContaReceber {
+  id          String   @id @default(cuid())
+  descricao   String
+  valor       Decimal  @db.Decimal(10, 2)
+  dataVencimento DateTime
+  dataRecebimento DateTime?
+  status      String   @default("PENDENTE") // PENDENTE, RECEBIDO, VENCIDO
+  cliente     String?
+  categoria   String?  // VENDA, SERVICO, OUTROS
+  observacoes String?
+  empresaId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@map("contas_receber")
+}
+
+// Modelo para Alertas
+model Alerta {
+  id        String   @id @default(cuid())
+  tipo      String   // ESTOQUE_BAIXO, VENCIMENTO, OUTROS
+  titulo    String
+  mensagem  String
+  lido      Boolean  @default(false)
+  prioridade String  @default("MEDIA") // BAIXA, MEDIA, ALTA
+  empresaId String
+  createdAt DateTime @default(now())
+
+  // Relacionamentos
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@map("alertas")
+}
+
