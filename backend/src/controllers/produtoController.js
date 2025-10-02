@@ -367,6 +367,40 @@ const atualizarEstoque = async (req, res) => {
   }
 };
 
+// Alternar status do produto (ativo/inativo)
+const alternarStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar se produto existe
+    const produto = await prisma.produto.findFirst({
+      where: {
+        id,
+        empresaId: req.empresa.id
+      }
+    });
+
+    if (!produto) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+
+    // Alternar status
+    const produtoAtualizado = await prisma.produto.update({
+      where: { id },
+      data: { ativo: !produto.ativo }
+    });
+
+    res.json({
+      message: `Produto ${produtoAtualizado.ativo ? 'ativado' : 'desativado'} com sucesso`,
+      produto: produtoAtualizado
+    });
+
+  } catch (error) {
+    console.error('Erro ao alternar status do produto:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
+
 module.exports = {
   listarProdutos,
   buscarProduto,
@@ -374,6 +408,7 @@ module.exports = {
   atualizarProduto,
   excluirProduto,
   produtosEstoqueBaixo,
-  atualizarEstoque
+  atualizarEstoque,
+  alternarStatus
 };
 

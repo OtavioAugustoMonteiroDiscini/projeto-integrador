@@ -8,7 +8,8 @@ const {
   atualizarProduto,
   excluirProduto,
   produtosEstoqueBaixo,
-  atualizarEstoque
+  atualizarEstoque,
+  alternarStatus
 } = require('../controllers/produtoController');
 
 const router = express.Router();
@@ -137,6 +138,7 @@ router.get('/:id', idValidation, buscarProduto);
 router.post('/', criarProdutoValidation, criarProduto);
 router.put('/:id', atualizarProdutoValidation, atualizarProduto);
 router.patch('/:id/estoque', atualizarEstoqueValidation, atualizarEstoque);
+router.patch('/:id/status', idValidation, alternarStatus);
 router.delete('/:id', idValidation, excluirProduto);
 
 module.exports = router;

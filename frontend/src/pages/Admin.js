@@ -27,8 +27,10 @@ import ExportButton from '../components/ExportButton';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAuth } from '../contexts/AuthContext';
 
 const Admin = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -39,6 +41,39 @@ const Admin = () => {
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
   const [empresaToDelete, setEmpresaToDelete] = useState(null);
   const queryClient = useQueryClient();
+
+  // Verificar se o usuário é admin
+  if (!user || user.tipo !== 'ADMIN') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full text-center">
+          <div className="bg-white rounded-lg shadow-md p-8">
+            <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-red-100 mb-4">
+              <Shield className="h-8 w-8 text-red-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
+            <p className="text-gray-600 mb-4">
+              Você não tem permissões de administrador para acessar esta página.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Para acessar o painel de administração, faça login com uma conta de administrador.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
+              <h3 className="text-sm font-medium text-blue-800 mb-2">Credenciais de Administrador:</h3>
+              <p className="text-xs text-blue-700">Email: admin@sistemagestao.com</p>
+              <p className="text-xs text-blue-700">Senha: admin123</p>
+            </div>
+            <button
+              onClick={() => window.location.href = '/login'}
+              className="btn btn-primary w-full"
+            >
+              Ir para Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Buscar estatísticas
   const { data: statsData, isLoading: statsLoading } = useQuery(

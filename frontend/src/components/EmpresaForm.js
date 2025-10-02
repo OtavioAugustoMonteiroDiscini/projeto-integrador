@@ -1,33 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import LoadingSpinner from './LoadingSpinner';
+import { maskCNPJ, maskTelefone, maskCEP, removeMask, validateCNPJ } from '../utils/masks';
 
 const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm();
+  const [cnpjValue, setCnpjValue] = useState('');
+  const [telefoneValue, setTelefoneValue] = useState('');
+  const [cepValue, setCepValue] = useState('');
 
   useEffect(() => {
     if (empresa) {
       // Preencher formulário com dados da empresa
       setValue('nome', empresa.nome);
-      setValue('cnpj', empresa.cnpj);
       setValue('email', empresa.email);
-      setValue('telefone', empresa.telefone || '');
       setValue('endereco', empresa.endereco || '');
       setValue('cidade', empresa.cidade || '');
       setValue('estado', empresa.estado || '');
-      setValue('cep', empresa.cep || '');
       setValue('tipo', empresa.tipo || 'EMPRESA');
       setValue('ativo', empresa.ativo);
+      
+      // Aplicar máscaras aos valores iniciais
+      const cnpjMasked = empresa.cnpj ? maskCNPJ(empresa.cnpj) : '';
+      const telefoneMasked = empresa.telefone ? maskTelefone(empresa.telefone) : '';
+      const cepMasked = empresa.cep ? maskCEP(empresa.cep) : '';
+      
+      setCnpjValue(cnpjMasked);
+      setTelefoneValue(telefoneMasked);
+      setCepValue(cepMasked);
+      
+      setValue('cnpj', cnpjMasked);
+      setValue('telefone', telefoneMasked);
+      setValue('cep', cepMasked);
     } else {
       // Limpar formulário para nova empresa
       reset();
       setValue('tipo', 'EMPRESA');
       setValue('ativo', true);
+      setCnpjValue('');
+      setTelefoneValue('');
+      setCepValue('');
     }
   }, [empresa, setValue, reset]);
 
   const onSubmitForm = (data) => {
-    onSubmit(data);
+    // Remove máscaras antes de enviar os dados
+    const formattedData = {
+      ...data,
+      cnpj: removeMask(data.cnpj),
+      telefone: removeMask(data.telefone),
+      cep: removeMask(data.cep)
+    };
+    onSubmit(formattedData);
+  };
+
+  // Handlers para aplicar máscaras
+  const handleCnpjChange = (e) => {
+    const maskedValue = maskCNPJ(e.target.value);
+    setCnpjValue(maskedValue);
+    setValue('cnpj', maskedValue);
+  };
+
+  const handleTelefoneChange = (e) => {
+    const maskedValue = maskTelefone(e.target.value);
+    setTelefoneValue(maskedValue);
+    setValue('telefone', maskedValue);
+  };
+
+  const handleCepChange = (e) => {
+    const maskedValue = maskCEP(e.target.value);
+    setCepValue(maskedValue);
+    setValue('cep', maskedValue);
   };
 
   return (
@@ -56,15 +99,18 @@ const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
           </label>
           <input
             type="text"
-            {...register('cnpj', { 
-              required: 'CNPJ é obrigatório',
-              pattern: {
-                value: /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/,
-                message: 'CNPJ deve estar no formato 00.000.000/0000-00'
-              }
-            })}
+            value={cnpjValue}
+            onChange={handleCnpjChange}
             className="input"
             placeholder="00.000.000/0000-00"
+            maxLength={18}
+          />
+          <input
+            type="hidden"
+            {...register('cnpj', { 
+              required: 'CNPJ é obrigatório',
+              validate: value => validateCNPJ(value) || 'CNPJ inválido'
+            })}
           />
           {errors.cnpj && (
             <p className="text-red-500 text-sm mt-1">{errors.cnpj.message}</p>
@@ -100,9 +146,15 @@ const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
           </label>
           <input
             type="text"
-            {...register('telefone')}
+            value={telefoneValue}
+            onChange={handleTelefoneChange}
             className="input"
             placeholder="(11) 99999-9999"
+            maxLength={15}
+          />
+          <input
+            type="hidden"
+            {...register('telefone')}
           />
         </div>
 
@@ -124,9 +176,15 @@ const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
           </label>
           <input
             type="text"
-            {...register('cep')}
+            value={cepValue}
+            onChange={handleCepChange}
             className="input"
             placeholder="00000-000"
+            maxLength={9}
+          />
+          <input
+            type="hidden"
+            {...register('cep')}
           />
         </div>
 

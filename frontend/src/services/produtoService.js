@@ -37,6 +37,11 @@ export const produtoService = {
       operacao
     });
     return response.data;
+  },
+
+  async alternarStatus(id) {
+    const response = await api.patch(`/produtos/${id}/status`);
+    return response.data;
   }
 };
 
