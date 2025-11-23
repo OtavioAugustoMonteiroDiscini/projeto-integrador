@@ -400,11 +400,22 @@ const verificarVencimentos = async (empresaId) => {
 // Verificar alertas da empresa
 const verificarAlertas = async (req, res) => {
   try {
+    // Primeiro, marcar todos os alertas existentes como lidos
+    const alertasMarcados = await prisma.alerta.updateMany({
+      where: {
+        empresaId: req.empresa.id,
+        lido: false
+      },
+      data: { lido: true }
+    });
+
+    // Depois, verificar e criar novos alertas
     await verificarEstoqueBaixo(req.empresa.id);
     await verificarVencimentos(req.empresa.id);
 
     res.json({
-      message: 'Verificação de alertas concluída'
+      message: 'Verificação de alertas concluída',
+      alertasMarcadosComoLidos: alertasMarcados.count
     });
   } catch (error) {
     console.error('Erro ao verificar alertas:', error);

@@ -309,10 +309,33 @@ const atualizarStatusVenda = async (req, res) => {
 const cancelarVenda = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Cancelando venda - ID recebido:', id);
+    console.log('Tipo do ID:', typeof id);
+    console.log('Empresa ID:', req.empresa?.id);
+
+    // Verificar se o ID existe
+    if (!id) {
+      console.error('ID não fornecido na requisição');
+      return res.status(400).json({ 
+        error: 'ID da venda é obrigatório',
+        received: { id, type: typeof id }
+      });
+    }
+
+    const vendaId = String(id).trim();
+
+    if (vendaId === '') {
+      return res.status(400).json({ 
+        error: 'ID da venda é obrigatório',
+        received: { id, type: typeof id }
+      });
+    }
+
+    console.log('Buscando venda com ID:', vendaId, 'para empresa:', req.empresa.id);
 
     const venda = await prisma.venda.findFirst({
       where: {
-        id,
+        id: vendaId,
         empresaId: req.empresa.id
       },
       include: {
@@ -348,7 +371,7 @@ const cancelarVenda = async (req, res) => {
 
       // Cancelar venda
       await tx.venda.update({
-        where: { id },
+        where: { id: vendaId },
         data: { status: 'CANCELADA' }
       });
     });
@@ -359,7 +382,10 @@ const cancelarVenda = async (req, res) => {
 
   } catch (error) {
     console.error('Erro ao cancelar venda:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -562,6 +588,63 @@ const atualizarVenda = async (req, res) => {
   }
 };
 
+// Excluir venda permanentemente (apenas se estiver cancelada)
+const excluirVenda = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('Excluindo venda com ID:', id);
+
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      return res.status(400).json({ error: 'ID da venda é obrigatório' });
+    }
+
+    const vendaId = id.trim();
+
+    // Buscar venda
+    const venda = await prisma.venda.findFirst({
+      where: {
+        id: vendaId,
+        empresaId: req.empresa.id
+      }
+    });
+
+    if (!venda) {
+      return res.status(404).json({ error: 'Venda não encontrada' });
+    }
+
+    // Só permite excluir se estiver cancelada
+    if (venda.status !== 'CANCELADA') {
+      return res.status(400).json({
+        error: 'Apenas vendas canceladas podem ser excluídas permanentemente'
+      });
+    }
+
+    // Excluir venda e itens em transação
+    await prisma.$transaction(async (tx) => {
+      // Excluir itens da venda
+      await tx.itemVenda.deleteMany({
+        where: { vendaId: vendaId }
+      });
+
+      // Excluir venda
+      await tx.venda.delete({
+        where: { id: vendaId }
+      });
+    });
+
+    res.json({
+      message: 'Venda excluída permanentemente com sucesso'
+    });
+
+  } catch (error) {
+    console.error('Erro ao excluir venda:', error);
+    res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   listarVendas,
   buscarVenda,
@@ -569,6 +652,7 @@ module.exports = {
   atualizarVenda,
   atualizarStatusVenda,
   cancelarVenda,
+  excluirVenda,
   relatorioVendas
 };
 

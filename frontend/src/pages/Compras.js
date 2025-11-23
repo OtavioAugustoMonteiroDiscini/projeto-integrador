@@ -105,14 +105,29 @@ const Compras = () => {
     }
   };
 
+  const handleCancelar = async (id) => {
+    if (window.confirm('Tem certeza que deseja cancelar esta compra?')) {
+      try {
+        await compraService.cancelar(id);
+        toast.success('Compra cancelada com sucesso!');
+        queryClient.invalidateQueries('compras');
+      } catch (error) {
+        const errorMessage = error.response?.data?.error || error.message || 'Erro ao cancelar compra';
+        toast.error(errorMessage);
+        console.error('Erro ao cancelar compra:', error);
+      }
+    }
+  };
+
   const handleExcluir = async (id) => {
-    if (window.confirm('Tem certeza que deseja excluir esta compra?')) {
+    if (window.confirm('Tem certeza que deseja excluir permanentemente esta compra cancelada? Esta ação não pode ser desfeita.')) {
       try {
         await compraService.excluir(id);
-        toast.success('Compra excluída com sucesso!');
-        refetch();
+        toast.success('Compra excluída permanentemente!');
+        queryClient.invalidateQueries('compras');
       } catch (error) {
-        toast.error('Erro ao excluir compra');
+        const errorMessage = error.response?.data?.error || error.message || 'Erro ao excluir compra';
+        toast.error(errorMessage);
         console.error('Erro ao excluir compra:', error);
       }
     }
@@ -210,7 +225,7 @@ const Compras = () => {
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Valor Total</h3>
                 <p className="text-2xl font-bold text-gray-900">
-                  R$ {compras.reduce((total, compra) => total + parseFloat(compra.valorTotal), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {compras.filter(c => c.status !== 'CANCELADA').reduce((total, compra) => total + parseFloat(compra.valorTotal), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
@@ -345,20 +360,33 @@ const Compras = () => {
                               <CheckCircle className="h-4 w-4" />
                             </button>
                           )}
-                          <button
-                            onClick={() => navigate(`/compras/editar/${compra.id}`)}
-                            className="text-primary-600 hover:text-primary-800"
-                            title="Editar"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleExcluir(compra.id)}
-                            className="text-danger-600 hover:text-danger-800"
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {compra.status !== 'CANCELADA' && (
+                            <>
+                              <button
+                                onClick={() => navigate(`/compras/editar/${compra.id}`)}
+                                className="text-primary-600 hover:text-primary-800"
+                                title="Editar"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleCancelar(compra.id)}
+                                className="text-warning-600 hover:text-warning-800"
+                                title="Cancelar"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
+                          {compra.status === 'CANCELADA' && (
+                            <button
+                              onClick={() => handleExcluir(compra.id)}
+                              className="text-danger-600 hover:text-danger-800"
+                              title="Excluir permanentemente"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

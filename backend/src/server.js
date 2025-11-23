@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const { PrismaClient } = require('@prisma/client');
+const { iniciarScheduler } = require('./utils/iaScheduler');
 
 // Importar rotas
 const authRoutes = require('./routes/auth');
@@ -17,27 +18,40 @@ const contaReceberRoutes = require('./routes/contaReceber');
 const dashboardRoutes = require('./routes/dashboard');
 const alertaRoutes = require('./routes/alerta');
 const adminRoutes = require('./routes/admin');
+const iaAnaliseRoutes = require('./routes/iaAnalise');
 
 const app = express();
 const prisma = new PrismaClient();
 
+// Configurar trust proxy para rate limiting funcionar corretamente
+app.set('trust proxy', 1);
+
 // Middleware de segurança
 app.use(helmet());
 
-// Rate limiting
+// Rate limiting - mais permissivo em desenvolvimento
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // máximo 100 requests por IP
-  message: 'Muitas tentativas de acesso. Tente novamente em 15 minutos.'
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // mais permissivo em dev
+  message: 'Muitas tentativas de acesso. Tente novamente em 15 minutos.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Pular rate limiting para health check
+    return req.path === '/api/health';
+  }
 });
 app.use(limiter);
 
-// CORS
+// CORS - configuração melhorada
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://seudominio.com'] 
     : ['http://localhost:3000'],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Per-Page']
 }));
 
 // Middleware para parsing
@@ -58,6 +72,7 @@ app.use('/api/contas-receber', contaReceberRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alertas', alertaRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/ia-analise', iaAnaliseRoutes);
 
 // Rota de health check
 app.get('/api/health', (req, res) => {
@@ -93,6 +108,9 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`);
       console.log(`📊 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+      
+      // Iniciar agendador de análise semanal
+      iniciarScheduler();
     });
   } catch (error) {
     console.error('❌ Erro ao iniciar servidor:', error);

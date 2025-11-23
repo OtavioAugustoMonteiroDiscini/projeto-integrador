@@ -286,10 +286,32 @@ const atualizarStatusCompra = async (req, res) => {
 const cancelarCompra = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Cancelando compra - ID recebido:', id);
+    console.log('Tipo do ID:', typeof id);
+    console.log('Empresa ID:', req.empresa?.id);
+
+    if (!id) {
+      console.error('ID não fornecido na requisição');
+      return res.status(400).json({ 
+        error: 'ID da compra é obrigatório',
+        received: { id, type: typeof id }
+      });
+    }
+
+    const compraId = String(id).trim();
+
+    if (compraId === '') {
+      return res.status(400).json({ 
+        error: 'ID da compra é obrigatório',
+        received: { id, type: typeof id }
+      });
+    }
+
+    console.log('Buscando compra com ID:', compraId, 'para empresa:', req.empresa.id);
 
     const compra = await prisma.compra.findFirst({
       where: {
-        id,
+        id: compraId,
         empresaId: req.empresa.id
       },
       include: {
@@ -331,7 +353,7 @@ const cancelarCompra = async (req, res) => {
 
       // Cancelar compra
       await tx.compra.update({
-        where: { id },
+        where: { id: compraId },
         data: { status: 'CANCELADA' }
       });
     });
@@ -550,6 +572,63 @@ const atualizarCompra = async (req, res) => {
   }
 };
 
+// Excluir compra permanentemente (apenas se estiver cancelada)
+const excluirCompra = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('Excluindo compra com ID:', id);
+
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      return res.status(400).json({ error: 'ID da compra é obrigatório' });
+    }
+
+    const compraId = id.trim();
+
+    // Buscar compra
+    const compra = await prisma.compra.findFirst({
+      where: {
+        id: compraId,
+        empresaId: req.empresa.id
+      }
+    });
+
+    if (!compra) {
+      return res.status(404).json({ error: 'Compra não encontrada' });
+    }
+
+    // Só permite excluir se estiver cancelada
+    if (compra.status !== 'CANCELADA') {
+      return res.status(400).json({
+        error: 'Apenas compras canceladas podem ser excluídas permanentemente'
+      });
+    }
+
+    // Excluir compra e itens em transação
+    await prisma.$transaction(async (tx) => {
+      // Excluir itens da compra
+      await tx.itemCompra.deleteMany({
+        where: { compraId: compraId }
+      });
+
+      // Excluir compra
+      await tx.compra.delete({
+        where: { id: compraId }
+      });
+    });
+
+    res.json({
+      message: 'Compra excluída permanentemente com sucesso'
+    });
+
+  } catch (error) {
+    console.error('Erro ao excluir compra:', error);
+    res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   listarCompras,
   buscarCompra,
@@ -557,6 +636,7 @@ module.exports = {
   atualizarCompra,
   atualizarStatusCompra,
   cancelarCompra,
+  excluirCompra,
   relatorioCompras
 };
 

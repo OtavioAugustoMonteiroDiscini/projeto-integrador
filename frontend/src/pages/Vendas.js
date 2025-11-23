@@ -90,15 +90,30 @@ const Vendas = () => {
     }
   };
 
-  const handleExcluir = async (id) => {
-    if (window.confirm('Tem certeza que deseja excluir esta venda?')) {
+  const handleCancelar = async (id) => {
+    if (window.confirm('Tem certeza que deseja cancelar esta venda?')) {
       try {
         await vendaService.cancelar(id);
         toast.success('Venda cancelada com sucesso!');
-        refetch();
+        queryClient.invalidateQueries('vendas');
       } catch (error) {
-        toast.error('Erro ao cancelar venda');
+        const errorMessage = error.response?.data?.error || error.message || 'Erro ao cancelar venda';
+        toast.error(errorMessage);
         console.error('Erro ao cancelar venda:', error);
+      }
+    }
+  };
+
+  const handleExcluir = async (id) => {
+    if (window.confirm('Tem certeza que deseja excluir permanentemente esta venda cancelada? Esta ação não pode ser desfeita.')) {
+      try {
+        await vendaService.excluir(id);
+        toast.success('Venda excluída permanentemente!');
+        queryClient.invalidateQueries('vendas');
+      } catch (error) {
+        const errorMessage = error.response?.data?.error || error.message || 'Erro ao excluir venda';
+        toast.error(errorMessage);
+        console.error('Erro ao excluir venda:', error);
       }
     }
   };
@@ -210,7 +225,7 @@ const Vendas = () => {
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Valor Total</h3>
                 <p className="text-2xl font-bold text-gray-900">
-                  R$ {vendas.reduce((total, venda) => total + parseFloat(venda.valorTotal), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {vendas.filter(v => v.status !== 'CANCELADA').reduce((total, venda) => total + parseFloat(venda.valorTotal), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
@@ -345,20 +360,33 @@ const Vendas = () => {
                               <CheckCircle className="h-4 w-4" />
                             </button>
                           )}
-                          <button
-                            onClick={() => navigate(`/vendas/editar/${venda.id}`)}
-                            className="text-primary-600 hover:text-primary-800"
-                            title="Editar"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleExcluir(venda.id)}
-                            className="text-danger-600 hover:text-danger-800"
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {venda.status !== 'CANCELADA' && (
+                            <>
+                              <button
+                                onClick={() => navigate(`/vendas/editar/${venda.id}`)}
+                                className="text-primary-600 hover:text-primary-800"
+                                title="Editar"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleCancelar(venda.id)}
+                                className="text-warning-600 hover:text-warning-800"
+                                title="Cancelar"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
+                          {venda.status === 'CANCELADA' && (
+                            <button
+                              onClick={() => handleExcluir(venda.id)}
+                              className="text-danger-600 hover:text-danger-800"
+                              title="Excluir permanentemente"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

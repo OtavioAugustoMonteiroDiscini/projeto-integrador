@@ -8,6 +8,7 @@ const {
   atualizarVenda,
   atualizarStatusVenda,
   cancelarVenda,
+  excluirVenda,
   relatorioVendas
 } = require('../controllers/vendaController');
 
@@ -92,7 +93,7 @@ const atualizarStatusValidation = [
 // Validação para ID
 const idValidation = [
   param('id')
-    .isLength({ min: 1 })
+    .notEmpty()
     .withMessage('ID da venda é obrigatório')
 ];
 
@@ -103,7 +104,11 @@ router.get('/:id', idValidation, buscarVenda);
 router.post('/', criarVendaValidation, criarVenda);
 router.put('/:id', idValidation, atualizarVendaValidation, atualizarVenda);
 router.patch('/:id/status', atualizarStatusValidation, atualizarStatusVenda);
-router.patch('/:id/cancelar', idValidation, cancelarVenda);
+// Rota de cancelar não precisa de validação do express-validator
+// pois fazemos validação manual no controller
+router.patch('/:id/cancelar', cancelarVenda);
+// Rota para excluir venda permanentemente (apenas canceladas)
+router.delete('/:id', idValidation, excluirVenda);
 
 module.exports = router;
 

@@ -5,13 +5,10 @@ import { Eye, EyeOff, Building2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { maskCNPJ, maskTelefone, removeMask, validateCNPJ } from '../utils/masks';
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [cnpjValue, setCnpjValue] = useState('');
-  const [telefoneValue, setTelefoneValue] = useState('');
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
 
@@ -19,7 +16,6 @@ const Register = () => {
     register,
     handleSubmit,
     watch,
-    setValue,
     formState: { errors }
   } = useForm();
 
@@ -28,14 +24,7 @@ const Register = () => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      // Remove máscaras antes de enviar os dados
-      const formattedData = {
-        ...data,
-        cnpj: removeMask(data.cnpj),
-        telefone: removeMask(data.telefone)
-      };
-      
-      const result = await registerUser(formattedData);
+      const result = await registerUser(data);
       
       if (result.success) {
         toast.success('Empresa cadastrada com sucesso!');
@@ -48,19 +37,6 @@ const Register = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Handlers para aplicar máscaras
-  const handleCnpjChange = (e) => {
-    const maskedValue = maskCNPJ(e.target.value);
-    setCnpjValue(maskedValue);
-    setValue('cnpj', maskedValue);
-  };
-
-  const handleTelefoneChange = (e) => {
-    const maskedValue = maskTelefone(e.target.value);
-    setTelefoneValue(maskedValue);
-    setValue('telefone', maskedValue);
   };
 
   return (
@@ -106,19 +82,16 @@ const Register = () => {
                 CNPJ
               </label>
               <input
-                value={cnpjValue}
-                onChange={handleCnpjChange}
+                {...register('cnpj', {
+                  required: 'CNPJ é obrigatório',
+                  minLength: {
+                    value: 14,
+                    message: 'CNPJ deve ter pelo menos 14 caracteres'
+                  }
+                })}
                 type="text"
                 className="input mt-1"
                 placeholder="00.000.000/0000-00"
-                maxLength={18}
-              />
-              <input
-                type="hidden"
-                {...register('cnpj', {
-                  required: 'CNPJ é obrigatório',
-                  validate: value => validateCNPJ(value) || 'CNPJ inválido'
-                })}
               />
               {errors.cnpj && (
                 <p className="mt-1 text-sm text-danger-600">{errors.cnpj.message}</p>
@@ -151,16 +124,10 @@ const Register = () => {
                 Telefone
               </label>
               <input
-                value={telefoneValue}
-                onChange={handleTelefoneChange}
+                {...register('telefone')}
                 type="text"
                 className="input mt-1"
                 placeholder="(11) 99999-9999"
-                maxLength={15}
-              />
-              <input
-                type="hidden"
-                {...register('telefone')}
               />
             </div>
 

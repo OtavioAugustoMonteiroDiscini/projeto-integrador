@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import { Link } from 'react-router-dom';
 import { 
   TrendingUp, 
@@ -19,6 +19,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
+  const queryClient = useQueryClient();
+  
   const { data: dashboardData, isLoading: dashboardLoading, error: dashboardError } = useQuery(
     'dashboard',
     dashboardService.getDashboard,
@@ -82,8 +84,18 @@ const Dashboard = () => {
   // Função para verificar alertas
   const handleVerificarAlertas = async () => {
     try {
-      await alertaService.verificar();
-      toast.success('Verificação de alertas concluída!');
+      const response = await alertaService.verificar();
+      const alertasMarcados = response?.alertasMarcadosComoLidos || 0;
+      
+      if (alertasMarcados > 0) {
+        toast.success(`${alertasMarcados} alerta(s) marcado(s) como lido(s) e verificação concluída!`);
+      } else {
+        toast.success('Verificação de alertas concluída!');
+      }
+      
+      // Invalidar queries para atualizar o dashboard
+      queryClient.invalidateQueries('dashboard');
+      queryClient.invalidateQueries('alertas');
     } catch (error) {
       toast.error('Erro ao verificar alertas');
       console.error('Erro ao verificar alertas:', error);

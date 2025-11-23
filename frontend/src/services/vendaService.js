@@ -31,6 +31,11 @@ export const vendaService = {
     return response.data;
   },
 
+  async excluir(id) {
+    const response = await api.delete(`/vendas/${id}`);
+    return response.data;
+  },
+
   async relatorio(params = {}) {
     const response = await api.get('/vendas/relatorio', { params });
     return response.data;

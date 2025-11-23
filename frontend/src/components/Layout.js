@@ -12,7 +12,8 @@ import {
   Menu, 
   X,
   LogOut,
-  Shield
+  Shield,
+  Brain
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
@@ -29,6 +30,7 @@ const Layout = ({ children }) => {
     { name: 'Compras', href: '/compras', icon: ShoppingBag },
     { name: 'Contas a Pagar', href: '/contas-pagar', icon: CreditCard },
     { name: 'Contas a Receber', href: '/contas-receber', icon: DollarSign },
+    { name: 'Análise IA', href: '/ia-analise', icon: Brain },
     { name: 'Alertas', href: '/alertas', icon: Bell },
     ...(user?.tipo === 'ADMIN' ? [{ name: 'Administração', href: '/admin', icon: Shield }] : []),
     { name: 'Perfil', href: '/perfil', icon: User },

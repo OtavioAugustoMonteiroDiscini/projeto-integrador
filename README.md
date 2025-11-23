@@ -198,4 +198,3 @@ Para suporte, entre em contato através dos issues do GitHub.
 ---
 
 Desenvolvido com ❤️ para facilitar a gestão empresarial.
-# projeto-integrador

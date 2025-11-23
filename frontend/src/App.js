@@ -27,6 +27,7 @@ import EditarContaReceber from './pages/EditarContaReceber';
 import Alertas from './pages/Alertas';
 import Perfil from './pages/Perfil';
 import Admin from './pages/Admin';
+import IAAnalise from './pages/IAAnalise';
 
 // Componentes
 import Layout from './components/Layout';
@@ -302,6 +303,16 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <Admin />
+                    </Layout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/ia-analise" 
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <IAAnalise />
                     </Layout>
                   </ProtectedRoute>
                 } 

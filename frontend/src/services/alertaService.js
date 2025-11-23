@@ -44,5 +44,10 @@ export const alertaService = {
   async verificar() {
     const response = await api.get('/alertas/verificar');
     return response.data;
+  },
+
+  async contarNaoLidos() {
+    const response = await api.get('/alertas/estatisticas');
+    return response.data.alertasNaoLidos || 0;
   }
 };
