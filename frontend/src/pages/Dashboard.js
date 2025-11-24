@@ -286,10 +286,10 @@ const Dashboard = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ formaPagamento, _sum }) => `${formaPagamento}: R$ ${_sum.valorTotal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                    label={({ formaPagamento, valorTotal }) => `${formaPagamento}: R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                     outerRadius={80}
                     fill="#8884d8"
-                    dataKey="_sum.valorTotal"
+                    dataKey="valorTotal"
                   >
                     {pagamentoData.vendasPorPagamento.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
