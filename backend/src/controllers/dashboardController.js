@@ -237,7 +237,14 @@ const vendasPorFormaPagamento = async (req, res) => {
       orderBy: { _sum: { valorTotal: 'desc' } }
     });
 
-    res.json({ vendasPorPagamento });
+    // Transformar dados para formato mais amigável
+    const vendasFormatadas = vendasPorPagamento.map(item => ({
+      formaPagamento: item.formaPagamento,
+      valorTotal: parseFloat(item._sum.valorTotal || 0),
+      quantidade: item._count
+    }));
+
+    res.json({ vendasPorPagamento: vendasFormatadas });
 
   } catch (error) {
     console.error('Erro ao buscar vendas por forma de pagamento:', error);
