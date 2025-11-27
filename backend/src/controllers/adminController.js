@@ -63,6 +63,7 @@ const listarEmpresas = async (req, res) => {
           email: true,
           telefone: true,
           endereco: true,
+          numero: true,
           cidade: true,
           estado: true,
           cep: true,
@@ -166,6 +167,7 @@ const criarEmpresa = async (req, res) => {
       email,
       telefone,
       endereco,
+      numero,
       cidade,
       estado,
       cep,
@@ -198,19 +200,23 @@ const criarEmpresa = async (req, res) => {
     // Criptografar senha
     const senhaHash = await bcrypt.hash(senha, 10);
 
+    // Preparar dados, incluindo apenas campos definidos
+    const dadosEmpresa = {
+      nome,
+      cnpj,
+      email,
+      telefone: telefone || null,
+      endereco: endereco || null,
+      numero: numero || null,
+      cidade: cidade || null,
+      estado: estado || null,
+      cep: cep || null,
+      senha: senhaHash,
+      tipo
+    };
+
     const empresa = await prisma.empresa.create({
-      data: {
-        nome,
-        cnpj,
-        email,
-        telefone,
-        endereco,
-        cidade,
-        estado,
-        cep,
-        senha: senhaHash,
-        tipo
-      },
+      data: dadosEmpresa,
       select: {
         id: true,
         nome: true,
@@ -218,6 +224,7 @@ const criarEmpresa = async (req, res) => {
         email: true,
         telefone: true,
         endereco: true,
+        numero: true,
         cidade: true,
         estado: true,
         cep: true,
@@ -234,7 +241,19 @@ const criarEmpresa = async (req, res) => {
 
   } catch (error) {
     console.error('Erro ao criar empresa:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    
+    // Verificar se é erro de campo não encontrado (migration não executada)
+    if (error.code === 'P2001' || error.message?.includes('Unknown column') || error.message?.includes('column') && error.message?.includes('does not exist')) {
+      return res.status(500).json({ 
+        error: 'Erro no banco de dados',
+        message: 'A migration do campo "numero" precisa ser executada. Execute: npm run db:migrate no diretório backend'
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      message: process.env.NODE_ENV === 'development' ? error.message : 'Algo deu errado'
+    });
   }
 };
 
@@ -256,6 +275,7 @@ const atualizarEmpresa = async (req, res) => {
       email,
       telefone,
       endereco,
+      numero,
       cidade,
       estado,
       cep,
@@ -312,6 +332,7 @@ const atualizarEmpresa = async (req, res) => {
       email,
       telefone,
       endereco,
+      numero,
       cidade,
       estado,
       cep,
@@ -334,6 +355,7 @@ const atualizarEmpresa = async (req, res) => {
         email: true,
         telefone: true,
         endereco: true,
+        numero: true,
         cidade: true,
         estado: true,
         cep: true,

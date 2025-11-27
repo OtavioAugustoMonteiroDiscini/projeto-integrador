@@ -18,6 +18,7 @@ model Empresa {
   email     String   @unique
   telefone  String?
   endereco  String?
+  numero    String?
   cidade    String?
   estado    String?
   cep       String?

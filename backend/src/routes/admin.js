@@ -41,6 +41,10 @@ const criarEmpresaValidation = [
     .optional()
     .isLength({ max: 255 })
     .withMessage('Endereço deve ter no máximo 255 caracteres'),
+  body('numero')
+    .optional()
+    .isLength({ max: 20 })
+    .withMessage('Número deve ter no máximo 20 caracteres'),
   body('cidade')
     .optional()
     .isLength({ max: 100 })
@@ -91,6 +95,10 @@ const atualizarEmpresaValidation = [
     .optional()
     .isLength({ max: 255 })
     .withMessage('Endereço deve ter no máximo 255 caracteres'),
+  body('numero')
+    .optional()
+    .isLength({ max: 20 })
+    .withMessage('Número deve ter no máximo 20 caracteres'),
   body('cidade')
     .optional()
     .isLength({ max: 100 })
