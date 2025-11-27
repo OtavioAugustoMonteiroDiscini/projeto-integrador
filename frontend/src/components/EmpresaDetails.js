@@ -29,6 +29,11 @@ const EmpresaDetails = ({ empresa }) => {
     },
     {
       icon: MapPin,
+      label: 'Número',
+      value: empresa.numero || 'Não informado'
+    },
+    {
+      icon: MapPin,
       label: 'Cidade/Estado',
       value: empresa.cidade && empresa.estado ? `${empresa.cidade}, ${empresa.estado}` : 'Não informado'
     },

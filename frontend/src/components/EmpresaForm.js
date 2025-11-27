@@ -1,33 +1,110 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import LoadingSpinner from './LoadingSpinner';
+import { maskCNPJ, maskTelefone, maskCEP, removeMask } from '../utils/masks';
 
 const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
-  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm();
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm();
+  const [isLoadingCEP, setIsLoadingCEP] = useState(false);
+  const isInitialMount = useRef(true);
+  const lastCepSearched = useRef('');
+  
+  const cepValue = watch('cep');
 
   useEffect(() => {
     if (empresa) {
       // Preencher formulário com dados da empresa
       setValue('nome', empresa.nome);
-      setValue('cnpj', empresa.cnpj);
+      setValue('cnpj', maskCNPJ(empresa.cnpj || ''));
       setValue('email', empresa.email);
-      setValue('telefone', empresa.telefone || '');
+      setValue('telefone', maskTelefone(empresa.telefone || ''));
       setValue('endereco', empresa.endereco || '');
+      setValue('numero', empresa.numero || '');
       setValue('cidade', empresa.cidade || '');
       setValue('estado', empresa.estado || '');
-      setValue('cep', empresa.cep || '');
+      setValue('cep', maskCEP(empresa.cep || ''));
       setValue('tipo', empresa.tipo || 'EMPRESA');
       setValue('ativo', empresa.ativo);
+      lastCepSearched.current = removeMask(empresa.cep || '');
     } else {
       // Limpar formulário para nova empresa
       reset();
       setValue('tipo', 'EMPRESA');
       setValue('ativo', true);
+      lastCepSearched.current = '';
     }
+    isInitialMount.current = false;
   }, [empresa, setValue, reset]);
 
+  // Buscar endereço por CEP
+  const buscarEnderecoPorCEP = useCallback(async (cep) => {
+    const cepLimpo = removeMask(cep);
+    
+    if (cepLimpo.length !== 8) {
+      return;
+    }
+
+    setIsLoadingCEP(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await response.json();
+      
+      if (!data.erro) {
+        // Preencher endereço sem sobrescrever o número se já existir
+        const numeroAtual = watch('numero');
+        setValue('endereco', data.logradouro || '');
+        setValue('cidade', data.localidade || '');
+        setValue('estado', data.uf || '');
+        // Não alterar o número se já foi preenchido pelo usuário
+        // Apenas limpar se estiver vazio
+        if (!numeroAtual) {
+          setValue('numero', '', { shouldDirty: false });
+        }
+      } else {
+        // CEP não encontrado, limpar campos de endereço mas manter número
+        setValue('endereco', '');
+        setValue('cidade', '');
+        setValue('estado', '');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+    } finally {
+      setIsLoadingCEP(false);
+    }
+  }, [setValue, watch]);
+
+  // Observar mudanças no CEP e buscar endereço
+  useEffect(() => {
+    // Evitar busca durante o carregamento inicial do formulário
+    if (isInitialMount.current) {
+      return;
+    }
+
+    if (cepValue) {
+      const cepLimpo = removeMask(cepValue);
+      
+      // Só buscar se o CEP tiver 8 dígitos e for diferente do último buscado
+      if (cepLimpo.length === 8 && cepLimpo !== lastCepSearched.current) {
+        // Usar timeout para evitar múltiplas chamadas enquanto o usuário digita
+        const timeoutId = setTimeout(() => {
+          lastCepSearched.current = cepLimpo;
+          buscarEnderecoPorCEP(cepValue);
+        }, 500);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [cepValue, buscarEnderecoPorCEP]);
+
   const onSubmitForm = (data) => {
-    onSubmit(data);
+    // Remover máscaras antes de enviar
+    const dadosLimpos = {
+      ...data,
+      cnpj: removeMask(data.cnpj),
+      telefone: data.telefone ? removeMask(data.telefone) : '',
+      cep: data.cep ? removeMask(data.cep) : ''
+    };
+    onSubmit(dadosLimpos);
   };
 
   return (
@@ -58,13 +135,21 @@ const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
             type="text"
             {...register('cnpj', { 
               required: 'CNPJ é obrigatório',
-              pattern: {
-                value: /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/,
-                message: 'CNPJ deve estar no formato 00.000.000/0000-00'
+              validate: (value) => {
+                const cnpjLimpo = removeMask(value);
+                if (cnpjLimpo.length !== 14) {
+                  return 'CNPJ deve ter 14 dígitos';
+                }
+                return true;
               }
             })}
+            onChange={(e) => {
+              const masked = maskCNPJ(e.target.value);
+              setValue('cnpj', masked, { shouldValidate: true });
+            }}
             className="input"
             placeholder="00.000.000/0000-00"
+            maxLength={18}
           />
           {errors.cnpj && (
             <p className="text-red-500 text-sm mt-1">{errors.cnpj.message}</p>
@@ -101,8 +186,13 @@ const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
           <input
             type="text"
             {...register('telefone')}
+            onChange={(e) => {
+              const masked = maskTelefone(e.target.value);
+              setValue('telefone', masked);
+            }}
             className="input"
             placeholder="(11) 99999-9999"
+            maxLength={15}
           />
         </div>
 
@@ -121,12 +211,20 @@ const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             CEP
+            {isLoadingCEP && (
+              <span className="ml-2 text-xs text-gray-500">Buscando...</span>
+            )}
           </label>
           <input
             type="text"
             {...register('cep')}
+            onChange={(e) => {
+              const masked = maskCEP(e.target.value);
+              setValue('cep', masked);
+            }}
             className="input"
             placeholder="00000-000"
+            maxLength={9}
           />
         </div>
 
@@ -158,7 +256,7 @@ const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
         </div>
 
         {/* Endereço */}
-        <div className="md:col-span-2">
+        <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Endereço
           </label>
@@ -166,7 +264,20 @@ const EmpresaForm = ({ empresa, onSubmit, onCancel, isLoading }) => {
             type="text"
             {...register('endereco')}
             className="input"
-            placeholder="Rua, número, bairro"
+            placeholder="Rua, avenida, logradouro"
+          />
+        </div>
+
+        {/* Número */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Número
+          </label>
+          <input
+            type="text"
+            {...register('numero')}
+            className="input"
+            placeholder="123"
           />
         </div>
 

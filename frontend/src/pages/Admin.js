@@ -84,8 +84,16 @@ const Admin = () => {
         setShowCreateModal(false);
       },
       onError: (error) => {
-        toast.error('Erro ao criar empresa');
-        console.error('Erro ao criar empresa:', error);
+        const errorMessage = error?.response?.data?.error || 'Erro ao criar empresa';
+        const errorDetails = error?.response?.data?.details;
+        
+        if (errorDetails && Array.isArray(errorDetails)) {
+          const detailsMessage = errorDetails.map(d => d.msg || d.message).join(', ');
+          toast.error(`${errorMessage}: ${detailsMessage}`);
+        } else {
+          toast.error(errorMessage);
+        }
+        console.error('Erro ao criar empresa:', error?.response?.data || error);
       }
     }
   );
